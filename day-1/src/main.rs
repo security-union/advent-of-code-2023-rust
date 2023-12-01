@@ -13,7 +13,7 @@ fn main() {
     // 3. sum all values
     let sum: u32 = decoded_vector.iter().sum();
 
-    // 4. print
+    // 4. print 54985
     println!("sum {}", sum);
 }
 
@@ -36,48 +36,38 @@ pub fn find_all_numbers_in_string(input: &str) -> Vec<(usize, u32)> {
     let all_numbers = vec![
         "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
     ];
-    let mut left_numbers = {
-        let mut found_numbers: Vec<(usize, u32)> = Vec::new();
-        for number in all_numbers.clone() {
-            let index = input.find(number);
-            let found_number = number;
-            if let Some(index) = index {
-                println!("index {:?} found_number {}", index, found_number);
-                let found_number = str_to_u32(found_number).unwrap();
-                found_numbers.push((index, found_number));
-            }
-        }
-        found_numbers
-    };
-    let mut right_numbers = {
-        let mut found_numbers: Vec<(usize, u32)> = Vec::new();
-        for number in all_numbers {
-            let index = input.rfind(number);
-            let found_number = number;
-            if let Some(index) = index {
-                let found_number = str_to_u32(found_number).unwrap();
-                found_numbers.push((index, found_number));
-            }
-        }
-        found_numbers
-    };
-    // combine all found number and sort by index
+    let mut left_numbers: Vec<_> = all_numbers
+        .iter()
+        .filter_map(|number| {
+            input.find(number).map(|index| {
+                let found_number = str_to_u32(number).unwrap();
+                (index, found_number)
+            })
+        })
+        .collect();
+
+    let mut right_numbers: Vec<_> = all_numbers
+        .iter()
+        .filter_map(|number| {
+            input.rfind(number).map(|index| {
+                let found_number = str_to_u32(number).unwrap();
+                (index, found_number)
+            })
+        })
+        .collect();
+    // combine all found numbers and sort by index
     left_numbers.append(&mut right_numbers);
     // remove dups
     let result: HashSet<(usize, u32)> = left_numbers.into_iter().collect();
-    let mut result: Vec<_> = result.into_iter().collect::<Vec<_>>();
-    result.sort_by(|a, b| a.0.cmp(&b.0));
-    result
+    result.into_iter().collect::<Vec<_>>()
 }
 
 fn find_all_digits_in_string(input: &str) -> Vec<(usize, u32)> {
-    let mut found_numbers = Vec::new();
-    for (index, char) in input.chars().enumerate() {
-        if let Some(digit) = char.to_digit(10) {
-            found_numbers.push((index, digit));
-        }
-    }
-    found_numbers
+    input
+        .chars()
+        .enumerate()
+        .filter_map(|(index, char)| char.to_digit(10).map(|digit| (index, digit)))
+        .collect()
 }
 
 pub fn decode_calibration_vector(input: &str) -> Vec<u32> {
