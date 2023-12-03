@@ -1,4 +1,5 @@
 use std::{str::Split, ops::Range, collections::HashSet, fs::read_to_string, path::Path};
+use regex::Match;
 
 fn main() {
     let input = read_to_string(Path::new(
@@ -7,8 +8,8 @@ fn main() {
     .unwrap();
     let actual_part_numbers =find_part_numbers(&input);
 
-    // query them 798
-    let assertions = vec!((353, 5), (280, 2), (75, 3), (869, 2), (798, 1), (145, 1), (629, 1), (579, 2), (837, 2), (2, 1), (658, 2), (869, 2));
+
+    let assertions = vec!((84, 1), (566, 2), (585, 4), (965, 4), (353, 5), (280, 2), (75, 3), (869, 2), (798, 1), (145, 1), (629, 1), (579, 2), (837, 2), (2, 1), (658, 2), (869, 2));
     for (part_number, matches) in assertions {
         let result : Vec<_> = actual_part_numbers.iter().filter(|part| part.1 == part_number).collect();
         assert_eq!(result.len(), matches, "part number {}", part_number);
@@ -141,8 +142,13 @@ fn find_part_numbers(input: &str) -> Vec<(SymbolLocation,u32)> {
 }
 
 
+ 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use regex::{Regex, Match};
+
     use super::*;
 
     #[test]
@@ -183,4 +189,89 @@ mod tests {
 
     }
 
+    #[test]
+    fn test_find_all_numbers_in_row() {
+        let input = "...731..484....875..#....................*243...681.................135..191.162.688%.........29.....*............688..........437......*..";
+
+        let number_regex = Regex::new(r"([0-9])+").unwrap();
+        let matches: Vec<_> = number_regex.find_iter(input).collect();
+
+        println!("matches {:?}", matches);
+
+        let symbol_regex = Regex::new("([^0-9,.])+").unwrap();
+        let matches: Vec<_> = symbol_regex.find_iter(input).collect();
+        println!("symbols {:?}", matches);
+    }
+
+    #[test]
+    fn represent_matrix_as_operators_and_numbers() {
+        let input = read_to_string(Path::new(
+            "/Users/darioalessandro/Documents/advent-of-code-2023/day-3/src/input.txt",
+        ))
+        .unwrap();
+
+        let number_regex = Regex::new(r"([0-9])+").unwrap();
+        let symbol_regex = Regex::new("([^0-9,.])+").unwrap();
+        
+        let mut all_symbols: Vec<(Match, usize)> = Vec::new();
+        let mut all_codes: Vec<(Match, usize)> = Vec::new();
+        for (row, input) in input.split('\n').enumerate() {
+            // build symbols and part numbers matrix.
+            let mut codes: Vec<_> = number_regex.find_iter(&input).map(|m| {
+                (m, row)
+            }).collect();
+            // println!("matches {:?}", codes);
+
+            let mut symbols: Vec<_> = symbol_regex.find_iter(input).map(|m| {
+                (m, row)
+            }).collect();
+            // println!("symbols {:?}", symbols);
+            all_symbols.append(&mut symbols);
+            all_codes.append(&mut codes);
+        }
+    
+        // if there's a symbol near each code, then add it to the list of final opcodes
+        let mut list_of_final_codes: HashMap<String, Match> = HashMap::new();
+        // iterate though all codes and see if there is a symbol nearby
+        for (code, code_row) in all_codes {
+            for (symbol, symbol_row) in all_symbols.clone() {
+                // if symbol near code, then add it to list_of_final_codes
+                // 1. check that symbol is in adjacent row
+                if  code.as_str() == "5" {
+                    println!("print symbols {:?}", symbol);
+                }
+                if symbol_row.abs_diff(code_row) <= 1 {
+                    //  345
+                    //  .*.
+
+                    // 345
+                    //*....
+                    // extend range of the symbol to cover diagonal matches
+                    let mut symbol_range_start = symbol.range().start;
+                    if symbol.range().start > 0 {
+                        symbol_range_start = symbol_range_start - 1;
+                    }
+                    let symbol_range_end = symbol.range().start+1;
+                    let code_range = code.range();
+                    if code_range.contains(&symbol_range_start) || code_range.contains(&symbol.range().start) || code_range.contains(&symbol_range_end) {
+                        let unique_string = format!("start:{} end: {} row: {} value: {}", code.range().start, code.range().end, code_row, symbol.as_str());
+                        list_of_final_codes.insert(unique_string, code);
+                    }
+                }
+            }
+        }
+        // println!("list of final codes {:?}", list_of_final_codes.len());
+
+        // add them all!
+        let mut regex_solution: Vec<u32> = list_of_final_codes.values().map(|val| val.as_str().parse::<u32>().unwrap()).collect();
+        regex_solution.sort();
+        let mut old_fasion_solution: Vec<u32> =find_part_numbers(&input).iter().map(|old| old.1).collect();      
+        old_fasion_solution.sort();
+
+    // assert_eq!(regex_solution, old_fasion_solution);
+        println!("regex {:?}", regex_solution);
+        let sum: u32 = regex_solution.iter().sum();
+        println!("sum {}", sum);
+
+    }
 }
